@@ -2,8 +2,8 @@
 An example of input/output 
 `
 Input:
-type=[non-deterministic]
-states=[q0,q1]
+type=[non-deterministic] \
+states=[q0,q1] 
 alphabet=[0,1]
 initial=[q0]
 accepting=[q1]
