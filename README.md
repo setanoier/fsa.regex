@@ -1,4 +1,4 @@
-# FSA to Regular Expression translator
+# FSA to Regular Expression Translator
 An example of input/output  
 Input:
 ```
