@@ -1,5 +1,5 @@
 # FSA to Regular Expression translator
-An example of input/output\ 
+An example of input/output  
 Input:
 ```
 type=[non-deterministic]
