@@ -276,7 +276,7 @@ struct FSA {
 };
 
 int main() {
-    std::freopen("/home/metanoier/Samples/cpp/FSAToRegex/input.txt", "r", stdin);
+    std::freopen("input.txt", "r", stdin);
     std::unique_ptr<FSA> fsa = std::make_unique<FSA>();
     std::string initializationResult = fsa->initialization();
     if (!(initializationResult == "Success")) {
