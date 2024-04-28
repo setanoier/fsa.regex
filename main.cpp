@@ -13,7 +13,7 @@ struct Transition {
     std::string to;
 
     Transition(std::string from, std::string input, std::string to) :
-                from(std::move(from)), input(std::move(input)), to(std::move(to)) {}
+            from(std::move(from)), input(std::move(input)), to(std::move(to)) {}
 };
 
 struct FSA {
@@ -63,9 +63,24 @@ struct FSA {
         return std::find(alphabet.begin(), alphabet.end(), letter) != alphabet.end();
     }
 
+    bool containsTransition(const Transition& other) {
+        for (const auto& transition : transitions) {
+            if (other.from == transition.from && other.input == transition.input &&
+                other.to == transition.to) {
+                return true;
+            }
+        }
+        return false;
+    }
+
     std::string initialization() {
+        int counter = 0;
         std::string input;
         while (std::cin >> input) {
+            counter++;
+            if (counter > 6) {
+                return "E1: Input file is malformed";
+            }
             std::vector<std::string> tokens = split(input, '=');
             if (tokens.size() != 2) {
                 return "E1: Input file is malformed";
@@ -79,6 +94,14 @@ struct FSA {
             } else if (key == "states") {
                 std::string s = value.substr(1, value.size() - 2);
                 states = split(s, ',');
+                if (states.size() != (std::count(s.begin(), s.end(), ',') + 1)) {
+                    return "E1: Input file is malformed";
+                }
+                auto it = std::unique(states.begin(), states.end());
+                states.erase(it, states.end());
+                if (states.empty()) {
+                    return "E1: Input file is malformed";
+                }
                 for (const auto& state : states) {
                     if (!checkState(state)) {
                         return "E1: Input file is malformed";
@@ -87,6 +110,12 @@ struct FSA {
             } else if (key == "alphabet") {
                 std::string s = value.substr(1, value.size() - 2);
                 alphabet = split(s, ',');
+                if (alphabet.size() != (std::count(s.begin(), s.end(), ',') + 1)) {
+                    return "E1: Input file is malformed";
+                }
+                if (alphabet.empty()) {
+                    return "E1: Input file is malformed";
+                }
                 for (const auto& letter : alphabet) {
                     if (!checkLetter(letter)) {
                         return "E1: Input file is malformed";
@@ -94,8 +123,10 @@ struct FSA {
                 }
             } else if (key == "initial") {
                 initial = value.substr(1, value.size() - 2);
-                if (!containsState(initial)) {
+                if (initial.empty()) {
                     return "E2: Initial state is not defined";
+                } else if (!containsState(initial)) {
+                    return "E4: A state '" + initial + "' is not in the set of states";
                 }
             } else if (key == "accepting") {
                 std::string s = value.substr(1, value.size() - 2);
@@ -103,29 +134,43 @@ struct FSA {
                 if (accepting.empty()) {
                     return "E3: Set of accepting states is empty";
                 }
+                if (accepting.size() != (std::count(s.begin(), s.end(), ',') + 1)) {
+                    return "E1: Input file is malformed";
+                }
+                std::sort(accepting.begin(), accepting.end());
+                auto it = std::unique(accepting.begin(), accepting.end());
+                accepting.erase(it, accepting.end());
                 for (const auto& state : accepting) {
                     if (!containsState(state)) {
-                        return "E4: A state " + state + " is not in the set of states";
+                        return "E4: A state '" + state + "' is not in the set of states";
                     }
                 }
             } else if (key == "transitions") {
                 std::string s = value.substr(1, value.size() - 2);
                 std::vector<std::string> intermediateTransitions = split(s, ',');
+                if (intermediateTransitions.size() != (std::count(s.begin(), s.end(), ',') + 1)) {
+                    return "E1: Input file is malformed";
+                }
                 for (const auto& intermediate : intermediateTransitions) {
                     std::vector<std::string> transitionTokens = split(intermediate, '>');
                     if (transitionTokens.size() != 3) {
                         return "E1: Input file is malformed";
                     }
                     std::string from = transitionTokens[0], delta = transitionTokens[1],
-                                    to = transitionTokens[2];
+                            to = transitionTokens[2];
                     if (!containsState(from)) {
-                        return "E4: A state " + from + " is not in the set of states";
+                        return "E4: A state '" + from + "' is not in the set of states";
                     } else if (!containsState(to)) {
-                        return "E4: A state " + to + " is not in the set of states";
+                        return "E4: A state '" + to + "' is not in the set of states";
+                    } else if (delta.empty()) {
+                        return "E1: Input file is malformed";
                     } else if (!containsLetter(delta)) {
-                        return "E5: A transition " + delta + " is not represented in the alphabet";
+                        return "E5: A transition '" + delta + "' is not represented in the alphabet";
                     }
                     Transition transition(from, delta, to);
+                    if (containsTransition(transition)) {
+                        return "E1: Input file is malformed";
+                    }
                     transitions.push_back(transition);
                 }
             } else {
@@ -135,28 +180,13 @@ struct FSA {
         return "Success";
     }
 
-    void dfs(const std::string& v, std::unordered_map<std::string, bool>& visited,
-                const std::unordered_map<std::string, std::vector<std::string>>& graph) {
-        visited[v] = true;
-        for (const auto& u : graph.at(v)) {
-            if (visited.count(u) && !visited[u]) {
-                dfs(u, visited, graph);
-            }
-        }
-    }
-
     bool checkDisjointness() {
-        std::unordered_map<std::string, bool> visited;
-        std::unordered_map<std::string, std::vector<std::string>> graph;
-        for (const auto& transition : transitions) {
-            graph[transition.from].push_back(transition.to);
-            visited[transition.from] = false;
-        }
+        std::unordered_set<std::string> visited;
 
-        dfs(initial, visited, graph);
+        dfs(initial, visited);
 
-        for (const auto& v : visited) {
-            if (!v.second) {
+        for (const auto& state : states) {
+            if (visited.count(state) == 0) {
                 return true;
             }
         }
@@ -164,22 +194,30 @@ struct FSA {
         return false;
     }
 
+    void dfs(const std::string& v, std::unordered_set<std::string>& visited) {
+        visited.insert(v);
+        for (const auto& transition : transitions) {
+            if (transition.from == v) {
+                if (visited.count(transition.to) == 0) {
+                    dfs(transition.to, visited);
+                }
+            }
+        }
+    }
+
     bool isNonDeterministic() {
-        std::unordered_map<std::string, std::unordered_set<std::string>> transitionsData;
+        std::unordered_map<std::string, std::unordered_map<std::string, std::vector<std::string>>> transitionsData;
 
         for (const auto& transition : transitions) {
-            const std::string& from = transition.from;
-            const std::string& to = transition.to;
+            transitionsData[transition.from][transition.input].push_back(transition.to);
+        }
 
-            if (from == to) {
-                return true;
+        for (const auto& data : transitionsData) {
+            for (const auto& pair : data.second) {
+                if (pair.second.size() > 1) {
+                    return true;
+                }
             }
-
-            if (transitionsData[from].count(to)) {
-                return true;
-            }
-
-            transitionsData[from].insert(to);
         }
 
         return false;
@@ -190,7 +228,7 @@ struct FSA {
                 states.size(),std::vector<std::string>(states.size(), ""));
         std::vector<std::vector<std::vector<std::string>>> R(
                 states.size(), std::vector<std::vector<std::string>>(states.size(),
-                        std::vector<std::string>(states.size(), "")));
+                                                                     std::vector<std::string>(states.size(), "")));
         std::string answer = "";
         for (size_t i = 0; i < transitions.size(); ++i) {
             size_t from, to;
@@ -234,10 +272,10 @@ struct FSA {
                 for (size_t j = 0; j < states.size(); ++j) {
                     if (k != 0) {
                         R[i][j][k] = "(" + R[i][k][k - 1] + ")(" + R[k][k][k - 1] + ")*(" +
-                                R[k][j][k - 1] + ")|(" + R[i][j][k - 1] + ")";
+                                     R[k][j][k - 1] + ")|(" + R[i][j][k - 1] + ")";
                     } else {
-                        R[i][j][k] = "((" + initR[i][k] + ")(" + initR[k][k] + ")*(" +
-                                     initR[k][j] + ")|(" + initR[i][j] + "))";
+                        R[i][j][k] = "(" + initR[i][k] + ")(" + initR[k][k] + ")*(" +
+                                     initR[k][j] + ")|(" + initR[i][j] + ")";
                     }
                 }
             }
@@ -261,9 +299,9 @@ struct FSA {
             }
 
             if (answer.empty()) {
-                answer = R[initialIndex][index][states.size() - 1];
+                answer = "(" + R[initialIndex][index][states.size() - 1] + ")";
             } else {
-                answer += "|" + R[initialIndex][index][states.size() - 1];
+                answer += "|(" + R[initialIndex][index][states.size() - 1] + ")";
             }
         }
 
@@ -276,7 +314,7 @@ struct FSA {
 };
 
 int main() {
-    std::freopen("/home/metanoier/Samples/cpp/FSAToRegex/input.txt", "r", stdin);
+    std::freopen("input.txt", "r", stdin);
     std::unique_ptr<FSA> fsa = std::make_unique<FSA>();
     std::string initializationResult = fsa->initialization();
     if (!(initializationResult == "Success")) {
@@ -289,7 +327,7 @@ int main() {
         return 0;
     }
 
-    if(fsa->isNonDeterministic() && fsa->type == "deterministic") {
+    if (fsa->isNonDeterministic() && fsa->type == "deterministic") {
         std::cout << "E7: FSA is non-deterministic";
         return 0;
     }
