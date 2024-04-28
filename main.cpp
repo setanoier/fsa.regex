@@ -24,7 +24,12 @@ struct FSA {
     std::vector<std::string> accepting;
     std::vector<Transition> transitions;
 
-
+    /**
+     * @brief Split string by certain delimiter
+     * @param s - input string
+     * @param delimiter - delimiter character
+     * @return split string
+     */
     std::vector<std::string> split(const std::string& s, char delimiter) {
         std::vector<std::string> tokens;
         std::stringstream ss(s);
@@ -37,6 +42,11 @@ struct FSA {
         return tokens;
     }
 
+    /**
+     * @brief Check state for required characters
+     * @param state - input state
+     * @return satisfy/not satisfy
+     */
     bool checkState(const std::string& state) {
         for (const auto& c : state) {
             if (!(isalpha(c) || isdigit(c))) {
@@ -46,6 +56,11 @@ struct FSA {
         return true;
     }
 
+    /**
+     * @brief Check letter for required characters
+     * @param letter - unit of the alphabet
+     * @return satisfy/not satisfy
+     */
     bool checkLetter(const std::string& letter) {
         for (const auto& c : letter) {
             if (!(isalpha(c) || isdigit(c) || c == '_')) {
@@ -55,14 +70,29 @@ struct FSA {
         return true;
     }
 
+    /**
+     * @brief Check that the set of states contains certain state
+     * @param state - input state
+     * @return contains/not contains
+     */
     bool containsState(const std::string& state) {
         return std::find(states.begin(), states.end(), state) != states.end();
     }
 
+    /**
+     * @brief Check that letter is presented in the alphabet
+     * @param letter - unit of the alphabet
+     * @return contains/not contains
+     */
     bool containsLetter(const std::string& letter) {
         return std::find(alphabet.begin(), alphabet.end(), letter) != alphabet.end();
     }
 
+    /**
+     * @brief Check that transition is already presented in the set
+     * @param other - certain transition
+     * @return presented/not presented
+     */
     bool containsTransition(const Transition& other) {
         for (const auto& transition : transitions) {
             if (other.from == transition.from && other.input == transition.input &&
@@ -73,6 +103,10 @@ struct FSA {
         return false;
     }
 
+
+    /**
+     * @brief Input processing with all the mentioned restrictions
+     */
     std::string initialization() {
         int counter = 0;
         std::string input;
@@ -180,6 +214,10 @@ struct FSA {
         return "Success";
     }
 
+    /**
+     * @brief Check set disjointness
+     * @return joint/disjoint
+     */
     bool checkDisjointness() {
         std::unordered_set<std::string> visited;
 
@@ -194,6 +232,11 @@ struct FSA {
         return false;
     }
 
+    /**
+     * @brief Depth First Search for mentioned above CheckDisjointness() method
+     * @param v - vertex (state) of the graph that consist of transitions
+     * @param visited - visited vertices map
+     */
     void dfs(const std::string& v, std::unordered_set<std::string>& visited) {
         visited.insert(v);
         for (const auto& transition : transitions) {
@@ -205,6 +248,10 @@ struct FSA {
         }
     }
 
+    /**
+     * @brief Check that the FSA is non-deterministic
+     * @return deterministic/non deterministic
+     */
     bool isNonDeterministic() {
         std::unordered_map<std::string, std::unordered_map<std::string, std::vector<std::string>>> transitionsData;
 
@@ -223,13 +270,16 @@ struct FSA {
         return false;
     }
 
+
     void kleenesAlgorithm() {
         std::vector<std::vector<std::string>> initR(
                 states.size(),std::vector<std::string>(states.size(), ""));
         std::vector<std::vector<std::vector<std::string>>> R(
                 states.size(), std::vector<std::vector<std::string>>(states.size(),
                                                                      std::vector<std::string>(states.size(), "")));
-        std::string answer = "";
+        std::string answer;
+
+        // Compute initial expression (Lab 10 Slide 17)
         for (size_t i = 0; i < transitions.size(); ++i) {
             size_t from, to;
             for (size_t j = 0; j < states.size(); ++j) {
@@ -253,6 +303,7 @@ struct FSA {
             }
         }
 
+
         for (size_t i = 0; i < states.size(); ++i) {
             if (initR[i][i].empty()) {
                 initR[i][i] = "eps";
@@ -267,6 +318,7 @@ struct FSA {
             }
         }
 
+        // Common R^{k}_{ij} expression computing
         for (size_t k = 0; k < states.size(); ++k) {
             for (size_t i = 0; i < states.size(); ++i) {
                 for (size_t j = 0; j < states.size(); ++j) {
@@ -281,6 +333,8 @@ struct FSA {
             }
         }
 
+
+        // Finding the initial index
         size_t initialIndex;
         for (size_t i = 0; i < states.size(); ++i) {
             if (states[i] == initial) {
@@ -289,6 +343,7 @@ struct FSA {
             }
         }
 
+        // Build final regular expression
         for (size_t i = 0; i < accepting.size(); ++i) {
             size_t index;
 
